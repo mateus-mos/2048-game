@@ -1,4 +1,5 @@
 program game2084;
+uses Crt;
 const
     MAX_MAP = 8;
     WALL = -5;
@@ -19,7 +20,6 @@ type
 
 var 
     game:type_game;
-    action:integer;
     end_game:boolean;
 
 procedure Create_Two(var game:type_game);
@@ -161,15 +161,18 @@ begin
 
     repeat 
 	print_map(game);
-	readln(action);
-	case action of
-	    UP:move_up(game);
-	    RIGHT:move_right(game);
-	    LEFT:move_left(game);
-	    DOWN:move_down(game);
-	    else
-		end_game:=true;
+	repeat 
+	until KeyPressed;
+	case ReadKey of
+	    #0:begin
+		case ReadKey of
+		    #72:move_up(game);
+		    #77:move_right(game);
+		    #75:move_left(game);
+		    #80:move_down(game);
+		end;
+	    end;
+	    #27:end_game:=true;
 	end;
-
     until end_game;
 end.
