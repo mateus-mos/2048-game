@@ -20,7 +20,7 @@ type
 
 var 
     game:type_game;
-    end_game:boolean;
+    end_game,movement:boolean;
 
 procedure Create_Two(var game:type_game);
 (* Create the number two in a random position on the map *)
@@ -113,7 +113,8 @@ begin
 	begin
 	    for i:=lin downto 2 do
 		for j:=col downto 1 do
-		    MoveNumber(game,i,j,i-1,j,UP);
+		    if MoveNumber(game,i,j,i-1,j,UP) then
+			move_up:=true;
 	end;
 end;
 
@@ -125,7 +126,8 @@ begin
 	begin
 	    for i:=2 to lin do
 		for j:=1 to col do
-		    MoveNumber(game,i,j,i+1,j,DOWN);
+		    if MoveNumber(game,i,j,i+1,j,DOWN) then
+			move_down:=true;
 	end;
 end;
 
@@ -137,7 +139,8 @@ begin
 	begin
 	    for i:=2 to lin do
 		for j:=1 to col do
-		    MoveNumber(game,i,j,i,j+1,RIGHT);
+		    if MoveNumber(game,i,j,i,j+1,RIGHT) then
+			move_right:=true;
 	end;
 end;
 
@@ -149,7 +152,8 @@ begin
 	begin
 	    for i:=lin downto 2 do
 		for j:=col downto 1 do
-		    MoveNumber(game,i,j,i,j-1,LEFT);
+		    if MoveNumber(game,i,j,i,j-1,LEFT) then
+			move_left:=true;
 	end;
 end;
 
@@ -160,19 +164,23 @@ begin
     initializing_game(game);
 
     repeat 
+	ClrScr;
+	movement:=false;
 	print_map(game);
 	repeat 
 	until KeyPressed;
 	case ReadKey of
 	    #0:begin
 		case ReadKey of
-		    #72:move_up(game);
-		    #77:move_right(game);
-		    #75:move_left(game);
-		    #80:move_down(game);
+		    #72:movement:=move_up(game);
+		    #77:movement:=move_right(game); 
+		    #75:movement:=move_left(game);
+		    #80:movement:=move_down(game);
 		end;
 	    end;
 	    #27:end_game:=true;
 	end;
+	if movement then
+	    Create_two(game);
     until end_game;
 end.
