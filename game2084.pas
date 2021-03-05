@@ -1,6 +1,7 @@
 program game2084;
 uses Crt;
 const
+    SIZE_MAP = 4;
     MAX_MAP = 8;
     WALL = -5;
     NOTHING = 0;
@@ -9,6 +10,7 @@ const
     LEFT = 91;
     DOWN = 90;
 type 
+    type_vector = array [1..SIZE_MAP] of integer;
     type_game = record 
 	lin,col:integer;
 	map: array [1..MAX_MAP,1..MAX_MAP] of integer;
@@ -22,11 +24,19 @@ var
     game:type_game;
     end_game,movement:boolean;
 
-procedure Create_Two(var game:type_game);
-(* Create the number two in a random position on the map *)
-var RanP:type_coord;
+procedure Create_Number(var game:type_game);
+(* Create the number(2 or 4) in a random position on the map *)
+(* The number 4 had a 10% of chance to be created *)
+var 
+    number:integer;
+    RanP:type_coord;
 begin
     randomize;
+    if random(10)+1 = 1 then
+	number:=4
+    else
+	number:=2;
+
     RanP.lin:=random(game.lin)+1;
     RanP.col:=random(game.col)+1;
     while game.map[RanP.lin,RanP.col] <> NOTHING do 
@@ -34,137 +44,287 @@ begin
 	    RanP.lin:=random(game.lin)+1;
 	    RanP.col:=random(game.col)+1;
 	end;
-    game.map[RanP.lin,Ranp.Col]:=2;
+    game.map[RanP.lin,Ranp.Col]:=number;
 end;
 
 procedure initializing_game(var game:type_game);
 var i,j:integer;
 begin
-    (* The map is 4x4 but we have one more line and columns for the walls *)
-    game.lin:=5;
-    game.col:=5;
+    game.lin:=SIZE_MAP;
+    game.col:=SIZE_MAP;
     game.score:=0;
 
 
     for i:=1 to game.lin do
 	for j:=1 to game.col do
-	    begin
-		if (i=1)or(j=1)or(i=game.lin)or(j=game.lin)then
-		   game.map[i,j]:=WALL
-		else
-		    game.map[i,j]:=NOTHING;
-	    end;
-    Create_Two(game);
-    Create_Two(game);
+	    game.map[i,j]:=NOTHING;
+
+    Create_Number(game);
+    Create_Number(game);
+end;
+
+function CountDigits(number:integer):integer;
+begin
+    if number <> 0 then
+	begin
+	    CountDigits:=0;
+	    while number <> 0 do
+		begin
+		    CountDigits:=CountDigits+1;
+		    number:=number div 10;
+		end;
+	end
+    else
+	CountDigits:=1;
+end;
+
+procedure print_number(var game:type_game; i,j:integer);
+(* Print the number [i,j] align with other numbers in the matrix *)
+(* The alignment follows the length of the greatest number, which in this case is 2084 *)
+var FreeSpace,digits,k,LenGreaN:integer;
+begin
+    LenGreaN:=4;
+    digits:=CountDigits(game.map[i,j]);
+    FreeSpace:=LenGreaN-digits;
+    write(' ');
+
+    if FreeSpace mod 2 <> 0 then
+	FreeSpace:=(FreeSpace div 2)+1
+    else
+	FreeSpace:=FreeSpace div 2;
+
+    (* Print Free Space before the number *)
+    for k:=1 to FreeSpace do
+	write(' ');
+
+    write(game.map[i,j]);
+
+    FreeSpace:=(LenGreaN-digits) div 2;
+    (* Print Free Space after the number *)
+    for k:=1 to FreeSpace do
+	write(' ');
+
+    write(' ');
+end;
+
+procedure print_line(lengthL:integer; ch:string);
+var i:integer;
+begin
+    for i:=1 to lengthL do
+	write(ch);
+    writeln;
 end;
 
 procedure print_map(var game:type_game);
-var i,j:integer;
+var i,j,SizeTopBot:integer;
 begin
+    SizeTopBot:=SIZE_MAP*6+2; (* Calculate the length of the top and bottom to create a box around the game  *)
+    print_line(SizeTopBot,'═');
+    for i:=1 to game.lin do
+	begin
+	    write('║');
+	    for j:=1 to game.col do
+		if game.map[i,j] >= 0 then
+		    print_number(game,i,j);
+	    write('║');
+	    writeln;
+	end;
+    print_line(SizeTopBot,'═');
+end;
+
+function IsMoveValid(var v_lin:type_vector; i:integer):integer;
+begin
+    if v_lin[i-1] = NOTHING then
+        IsMoveValid:=1
+    else if v_lin[i] = v_lin[i-1] then
+        IsMoveValid:=2
+    else
+        IsMoveValid:=0;
+end;
+
+function MoveAndSum(var v_lin:type_vector; size:integer):boolean;
+(* Move and Sum the elements of the vector *)
+(* The direction of the move is to the left *) 
+(* Returns TRUE if the move was valid *)
+(* Returns FALSE if the move was not valid *)
+var
+    i,e,ResultM:integer;
+    v:type_vector;
+begin
+    MoveAndSum:=FALSE;
+    for i:=1 to size do
+        v[i]:=0;
+
+    for i:=2 to size do
+        begin
+            e:=i;
+            ResultM:=IsMoveValid(v_lin,e);
+            while (ResultM <> 0)and(e>1) do
+                begin
+                    case ResultM of
+                        1:begin
+                            v_lin[e-1]:=v_lin[e];
+                            v_lin[e]:=NOTHING;
+                        end;
+                        2:begin
+                            if v[e] = 0 then 
+                                begin
+                                    v_lin[e-1]:=v_lin[e-1]*2;
+                                    v_lin[e]:=NOTHING;
+                                    v[e-1]:=1;
+                                end;
+                        end;
+                    end;
+                    e:=e-1;
+                    ResultM:=IsMoveValid(v_lin,e);
+                end;
+	    if e <> i then
+		MoveAndSum:=TRUE;
+            v[e-1]:=1;
+        end;
+end;
+
+
+function move_left(var game:type_game):boolean;
+var 
+    i,j:integer;
+    v:type_vector;
+begin
+    move_left:=FALSE;
     for i:=1 to game.lin do
 	begin
 	    for j:=1 to game.col do
-		write(game.map[i,j],' ');
-	    writeln;
+		v[j]:=game.map[i,j];
+
+	    if MoveAndSum(v,game.lin) then
+		move_left:=TRUE;
+
+	    for j:=1 to game.col do
+		game.map[i,j]:=v[j];
 	end;
 end;
 
-function IsSpaceFree(var game:type_game; direction,i,j:integer):boolean;
-(* Returns true If the next direction is free *)
-(* Otherwise returns false *)
+
+function move_right(var game:type_game):boolean;
+var 
+    i,j,k:integer;
+    v:type_vector;
 begin
-    case direction of
-	UP:IsSpaceFree:= game.map[i-1,j] = NOTHING;
-	RIGHT:IsSpaceFree:= game.map[i,j+1] = NOTHING;
-	LEFT:IsSpaceFree:= game.map[i,j-1] = NOTHING;
-	DOWN:IsSpaceFree:= game.map[i+1,j] = NOTHING;
-    end;
+    move_right:=FALSE;
+    for i:=1 to game.lin do
+	begin
+	    (* The side which will be move had to be at the beginning of the vector *)
+	    k:=1;
+	    for j:=game.col downto 1 do
+		begin
+		    v[k]:=game.map[i,j];
+		    k:=k+1;
+		end;
+
+	    if MoveAndSum(v,game.lin) then
+		move_right:=TRUE;
+
+	    (* Copy to the right place in the matrix *)
+	    k:=1;
+	    for j:=game.col downto 1 do
+		begin
+		    game.map[i,k]:=v[j];
+		    k:=k+1;
+		end;
+	end;
 end;
 
-function MoveNumber(var game:type_game; i,j,k,l,direction:integer):boolean;
-(* Move the number in position [i,j] to position [k,l] *)
-(* returns true If the movement is possible*)
-(* returns false If the movement is not possible *)
-(* sum them If the position [k,l] have an igual number *)
+
+function move_down(var game:type_game):boolean;
+var 
+    i,j,k:integer;
+    v:type_vector;
 begin
-    MoveNumber:=false;
-    if game.map[i,j] > 0 then
+    move_down:=FALSE;
+    for j:=1 to game.col do
 	begin
-	    if IsSpaceFree(game,direction,i,j) then
+	    k:=1;
+	    for i:=game.lin downto 1 do
 		begin
-		    MoveNumber:=true;
-		    game.map[k,l]:=game.map[i,j];
-		    game.map[i,j]:=NOTHING;
-		end
-	    else if game.map[k,l] = game.map[i,j] then
+		    v[k]:=game.map[i,j];
+		    k:=k+1;
+		end;
+
+	    if MoveAndSum(v,game.lin) then
+		move_down:=TRUE;
+
+	    k:=1;
+	    for i:=game.lin downto 1 do
 		begin
-		    MoveNumber:=true;
-		    game.map[k,l]:=game.map[i,j]*2;
-		    game.map[i,j]:=NOTHING;
+		    game.map[k,j]:=v[i];
+		    k:=k+1;
 		end;
 	end;
 end;
 
 function move_up(var game:type_game):boolean;
-var i,j:integer;
+var 
+    i,j:integer;
+    v:type_vector;
 begin
-    move_up:=false;
-    with game do
+    move_up:=FALSE;
+    for j:=1 to game.col do
 	begin
-	    for i:=lin downto 2 do
-		for j:=col downto 1 do
-		    if MoveNumber(game,i,j,i-1,j,UP) then
-			move_up:=true;
+	    for i:=1 to game.lin do
+		v[i]:=game.map[i,j];
+
+	    if MoveAndSum(v,game.lin) then
+		move_up:=TRUE;
+
+	    for i:=1 to game.lin do
+		game.map[i,j]:=v[i];
 	end;
 end;
 
-function move_down(var game:type_game):boolean;
+function HaveValidMove(var game:type_game):boolean;
 var i,j:integer;
 begin
-    move_down:=false;
     with game do
 	begin
-	    for i:=2 to lin do
-		for j:=1 to col do
-		    if MoveNumber(game,i,j,i+1,j,DOWN) then
-			move_down:=true;
-	end;
+	    HaveValidMove:=false;
+	    i:=1;
+	    while (i<=lin) and (HaveValidMove = false) do
+		begin
+		    j:=1;
+		    while (j<=col) and (HaveValidMove = false) do
+			begin
+			    if map[i,j] = NOTHING then
+				HaveValidMove:=TRUE
+			    else
+				if (map[i,j] = map[i,j+1])and(j<>col) then
+				    HaveValidMove:=TRUE
+			    else
+				if (map[i,j] = map[i,j-1])and(j<>1) then
+				    HaveValidMove:=TRUE
+			    else
+				if (map[i,j] = map[i+1,j])and(i<>lin) then
+				    HaveValidMove:=TRUE
+			    else
+				if (map[i,j] = map[i-1,j])and(i<>1) then
+				    HaveValidMove:=TRUE;
+
+
+			    j:=j+1;
+			end;
+		    i:=i+1;
+		end;
+    end;
 end;
 
-function move_right(var game:type_game):boolean;
-var i,j:integer;
 begin
-    move_right:=false;
-    with game do
-	begin
-	    for i:=2 to lin do
-		for j:=1 to col do
-		    if MoveNumber(game,i,j,i,j+1,RIGHT) then
-			move_right:=true;
-	end;
-end;
-
-function move_left(var game:type_game):boolean;
-var i,j:integer;
-begin
-    move_left:=false;
-    with game do
-	begin
-	    for i:=lin downto 2 do
-		for j:=col downto 1 do
-		    if MoveNumber(game,i,j,i,j-1,LEFT) then
-			move_left:=true;
-	end;
-end;
-
-
-
-begin
+    movement:=false;
     end_game:=false;
     initializing_game(game);
 
     repeat 
 	ClrScr;
+	if movement then
+	    Create_Number(game);
 	movement:=false;
 	print_map(game);
 	repeat 
@@ -180,7 +340,11 @@ begin
 	    end;
 	    #27:end_game:=true;
 	end;
-	if movement then
-	    Create_two(game);
+	
+	if HaveValidMove(game) = false then
+	    begin
+		Writeln('You Lose!');
+		end_game:=TRUE;
+	    end;
     until end_game;
 end.
