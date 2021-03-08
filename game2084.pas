@@ -32,7 +32,7 @@ var
     RanP:type_coord;
 begin
     randomize;
-    if random(10)+1 = 1 then
+    if random(9) = 1 then
 	number:=4
     else
 	number:=2;
@@ -142,7 +142,7 @@ begin
         IsMoveValid:=0;
 end;
 
-function MoveAndSum(var v_lin:type_vector; size:integer):boolean;
+function MoveAndSum(var game:type_game; var v_lin:type_vector; size:integer):boolean;
 (* Move and Sum the elements of the vector *)
 (* The direction of the move is to the left *) 
 (* Returns TRUE if the move was valid *)
@@ -152,35 +152,42 @@ var
     v:type_vector;
 begin
     MoveAndSum:=FALSE;
+    (* Initializing the vector *)
+    (* This Vector is to know what number sum and what not sum *)
     for i:=1 to size do
         v[i]:=0;
 
     for i:=2 to size do
         begin
-            e:=i;
-            ResultM:=IsMoveValid(v_lin,e);
-            while (ResultM <> 0)and(e>1) do
-                begin
-                    case ResultM of
-                        1:begin
-                            v_lin[e-1]:=v_lin[e];
-                            v_lin[e]:=NOTHING;
-                        end;
-                        2:begin
-                            if v[e] = 0 then 
-                                begin
-                                    v_lin[e-1]:=v_lin[e-1]*2;
-                                    v_lin[e]:=NOTHING;
-                                    v[e-1]:=1;
-                                end;
-                        end;
-                    end;
-                    e:=e-1;
-                    ResultM:=IsMoveValid(v_lin,e);
-                end;
-	    if e <> i then
-		MoveAndSum:=TRUE;
-            v[e-1]:=1;
+	    if v_lin[i] <> 0 then
+		begin
+		    (* Move the number in v_lin[i] to the left as much as possible *)
+		    e:=i;
+		    ResultM:=IsMoveValid(v_lin,e);
+		    while (ResultM <> 0)and(e>1) do
+			begin
+			    case ResultM of
+				1:begin
+				    v_lin[e-1]:=v_lin[e];
+				    v_lin[e]:=NOTHING;
+				end;
+				2:begin
+				    if v[e] = 0 then 
+					begin
+					    v_lin[e-1]:=v_lin[e-1]*2;
+					    game.score:=game.score+v_lin[e-1];
+					    v_lin[e]:=NOTHING;
+					    v[e-1]:=1;
+					end;
+				end;
+			    end;
+			    e:=e-1;
+			    ResultM:=IsMoveValid(v_lin,e);
+			end;
+		    if e <> i then
+			MoveAndSum:=TRUE;
+		    v[e-1]:=1;
+		end;
         end;
 end;
 
@@ -196,7 +203,7 @@ begin
 	    for j:=1 to game.col do
 		v[j]:=game.map[i,j];
 
-	    if MoveAndSum(v,game.lin) then
+	    if MoveAndSum(game,v,game.lin) then
 		move_left:=TRUE;
 
 	    for j:=1 to game.col do
@@ -221,7 +228,7 @@ begin
 		    k:=k+1;
 		end;
 
-	    if MoveAndSum(v,game.lin) then
+	    if MoveAndSum(game,v,game.lin) then
 		move_right:=TRUE;
 
 	    (* Copy to the right place in the matrix *)
@@ -250,7 +257,7 @@ begin
 		    k:=k+1;
 		end;
 
-	    if MoveAndSum(v,game.lin) then
+	    if MoveAndSum(game,v,game.lin) then
 		move_down:=TRUE;
 
 	    k:=1;
@@ -273,7 +280,7 @@ begin
 	    for i:=1 to game.lin do
 		v[i]:=game.map[i,j];
 
-	    if MoveAndSum(v,game.lin) then
+	    if MoveAndSum(game,v,game.lin) then
 		move_up:=TRUE;
 
 	    for i:=1 to game.lin do
@@ -281,34 +288,38 @@ begin
 	end;
 end;
 
-function HaveValidMove(var game:type_game):boolean;
-var i,j:integer;
+function CheckWinLose(var game:type_game):integer;
+(* Returns 2 if the player win the game *)
+(* Returns 1 if the player lose the game *)
+(* Returns 0 if has a valid move*)
+var i,j:integer; 
 begin
     with game do
 	begin
-	    HaveValidMove:=false;
+	    CheckWinLose:=1;
 	    i:=1;
-	    while (i<=lin) and (HaveValidMove = false) do
+	    while (i<=lin) and (CheckWinLose <> 0 ) and (CheckWinLose <> 2) do
 		begin
 		    j:=1;
-		    while (j<=col) and (HaveValidMove = false) do
+		    while (j<=col) and (CheckWinLose <> 0) and (CheckWinLose <> 2)  do
 			begin
-			    if map[i,j] = NOTHING then
-				HaveValidMove:=TRUE
+			   if map[i,j] = 2084 then 
+			       CheckWinLose:=2
+			   else 
+			       if map[i,j] = NOTHING then
+				CheckWinLose:=0
 			    else
 				if (map[i,j] = map[i,j+1])and(j<>col) then
-				    HaveValidMove:=TRUE
+				    CheckWinLose:=0
 			    else
 				if (map[i,j] = map[i,j-1])and(j<>1) then
-				    HaveValidMove:=TRUE
+				    CheckWinLose:=0
 			    else
 				if (map[i,j] = map[i+1,j])and(i<>lin) then
-				    HaveValidMove:=TRUE
+				    CheckWinLose:=0
 			    else
 				if (map[i,j] = map[i-1,j])and(i<>1) then
-				    HaveValidMove:=TRUE;
-
-
+				    CheckWinLose:=0;
 			    j:=j+1;
 			end;
 		    i:=i+1;
@@ -326,11 +337,15 @@ begin
 	if movement then
 	    Create_Number(game);
 	movement:=false;
+
+	writeln('SCORE: ',game.score);
 	print_map(game);
+	writeln(' Use the arrow keys to move. ');
+
 	repeat 
 	until KeyPressed;
 	case ReadKey of
-	    #0:begin
+	     #0:begin
 		case ReadKey of
 		    #72:movement:=move_up(game);
 		    #77:movement:=move_right(game); 
@@ -340,11 +355,16 @@ begin
 	    end;
 	    #27:end_game:=true;
 	end;
-	
-	if HaveValidMove(game) = false then
-	    begin
-		Writeln('You Lose!');
+	case CheckWinLose(game) of
+	    1:begin
+		writeln('  Game Over!  ');
 		end_game:=TRUE;
 	    end;
+	    2:begin
+		writeln('  You Win!  ');
+		end_game:=TRUE;
+	    end;
+	end;
+
     until end_game;
 end.
