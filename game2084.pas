@@ -2,6 +2,7 @@ program game2084;
 uses Crt;
 const
     SIZE_MAP = 4;
+    SIZETOPBOT = SIZE_MAP*6+6; (* Calculate the length of the top and bottom to create a box around the game  *)
     MAX_MAP = 8;
     WALL = -5;
     NOTHING = 0;
@@ -80,7 +81,7 @@ end;
 
 procedure print_number(var game:type_game; i,j:integer);
 (* Print the number [i,j] align with other numbers in the matrix *)
-(* The alignment follows the length of the greatest number, which in this case is 2084 *)
+(* The alignment follows the length of the greatest number, which in this case is 2048 *)
 var FreeSpace,digits,k,LenGreaN:integer;
 begin
     LenGreaN:=4;
@@ -110,26 +111,34 @@ end;
 procedure print_line(lengthL:integer; ch:string);
 var i:integer;
 begin
-    for i:=1 to lengthL do
-	write(ch);
+    write('+');
+    for i:=1 to (lengthL-2) do
+	begin
+	    if i mod 7 = 0 then
+		write('+')
+	    else
+		write(ch);
+
+    end;
     writeln;
 end;
 
 procedure print_map(var game:type_game);
-var i,j,SizeTopBot:integer;
+var i,j:integer;
 begin
-    SizeTopBot:=SIZE_MAP*6+2; (* Calculate the length of the top and bottom to create a box around the game  *)
-    print_line(SizeTopBot,'═');
+    print_line(SIZETOPBOT,'-');
     for i:=1 to game.lin do
 	begin
-	    write('║');
+	    write('|');
 	    for j:=1 to game.col do
 		if game.map[i,j] >= 0 then
-		    print_number(game,i,j);
-	    write('║');
+		    begin
+			print_number(game,i,j);
+			write('|');
+		    end;
 	    writeln;
+	    print_line(SIZETOPBOT,'-');
 	end;
-    print_line(SizeTopBot,'═');
 end;
 
 function IsMoveValid(var v_lin:type_vector; i:integer):integer;
@@ -298,14 +307,14 @@ begin
 	begin
 	    CheckWinLose:=1;
 	    i:=1;
-	    while (i<=lin) and (CheckWinLose <> 0 ) and (CheckWinLose <> 2) do
+	    while (i<=game.lin)and(CheckWinLose<>2) do
 		begin
 		    j:=1;
-		    while (j<=col) and (CheckWinLose <> 0) and (CheckWinLose <> 2)  do
+		    while (j<=game.col)and(CheckWinLose<>2) do
 			begin
-			   if map[i,j] = 2084 then 
-			       CheckWinLose:=2
-			   else 
+			    if map[i,j] = 2048 then
+				CheckWinLose:=2
+			    else
 			       if map[i,j] = NOTHING then
 				CheckWinLose:=0
 			    else
@@ -334,13 +343,28 @@ begin
 
     repeat 
 	ClrScr;
+	case CheckWinLose(game) of
+	    1:begin
+		print_line(SIZETOPBOT,'-');
+		writeln('          Game Over!');
+		print_line(SIZETOPBOT,'-');
+		end_game:=TRUE;
+	    end;
+	    2:begin
+		print_line(SIZETOPBOT,'-');
+		writeln('          You Win!');
+		print_line(SIZETOPBOT,'-');
+		end_game:=TRUE;
+	    end;
+	end;
+
 	if movement then
 	    Create_Number(game);
 	movement:=false;
 
 	writeln('SCORE: ',game.score);
 	print_map(game);
-	writeln(' Use the arrow keys to move. ');
+	writeln(' Use the arrow keys to move. Press ESC to quit the game. ');
 
 	repeat 
 	until KeyPressed;
@@ -354,16 +378,6 @@ begin
 		end;
 	    end;
 	    #27:end_game:=true;
-	end;
-	case CheckWinLose(game) of
-	    1:begin
-		writeln('  Game Over!  ');
-		end_game:=TRUE;
-	    end;
-	    2:begin
-		writeln('  You Win!  ');
-		end_game:=TRUE;
-	    end;
 	end;
 
     until end_game;
