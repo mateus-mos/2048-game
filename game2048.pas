@@ -1,4 +1,4 @@
-program game2084;
+program game2048;
 uses Crt;
 const
     SIZE_MAP = 4;
