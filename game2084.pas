@@ -64,47 +64,32 @@ begin
     Create_Number(game);
 end;
 
-function CountDigits(number:integer):integer;
+function CountDigit(number:integer):integer;
 begin
     if number <> 0 then
 	begin
-	    CountDigits:=0;
+	    CountDigit:=0;
 	    while number <> 0 do
 		begin
-		    CountDigits:=CountDigits+1;
+		    CountDigit:=CountDigit+1;
 		    number:=number div 10;
 		end;
 	end
     else
-	CountDigits:=1;
+	CountDigit:=1;
 end;
 
-procedure print_number(var game:type_game; i,j:integer);
-(* Print the number [i,j] align with other numbers in the matrix *)
-(* The alignment follows the length of the greatest number, which in this case is 2048 *)
-var FreeSpace,digits,k,LenGreaN:integer;
+procedure print_number(number:integer);
+(* Print the number aligned with other numbers in the matrix  *)
+var k,hwdigit:integer;
 begin
-    LenGreaN:=4;
-    digits:=CountDigits(game.map[i,j]);
-    FreeSpace:=LenGreaN-digits;
+    hwdigit:=CountDigit(number);
     write(' ');
-
-    if FreeSpace mod 2 <> 0 then
-	FreeSpace:=(FreeSpace div 2)+1
-    else
-	FreeSpace:=FreeSpace div 2;
-
-    (* Print Free Space before the number *)
-    for k:=1 to FreeSpace do
+    write(number);
+    (* The 4 is used to aling the numbers because the greatest number *)
+    (* possible is 2048, which have 4 digits *)
+    for k:=1 to 4-hwdigit do
 	write(' ');
-
-    write(game.map[i,j]);
-
-    FreeSpace:=(LenGreaN-digits) div 2;
-    (* Print Free Space after the number *)
-    for k:=1 to FreeSpace do
-	write(' ');
-
     write(' ');
 end;
 
@@ -118,7 +103,6 @@ begin
 		write('+')
 	    else
 		write(ch);
-
     end;
     writeln;
 end;
@@ -133,7 +117,7 @@ begin
 	    for j:=1 to game.col do
 		if game.map[i,j] >= 0 then
 		    begin
-			print_number(game,i,j);
+			print_number(game.map[i,j]);
 			write('|');
 		    end;
 	    writeln;
@@ -141,21 +125,24 @@ begin
 	end;
 end;
 
-function IsMoveValid(var v_lin:type_vector; i:integer):integer;
+function CanMove(var v_lin:type_vector; i:integer):integer;
+(* Returns 1 if the next position is free *)
+(* Returns 2 if the next position has an equal number *)
+(* Returns 0 if the next position is not free *)
 begin
     if v_lin[i-1] = NOTHING then
-        IsMoveValid:=1
+        CanMove:=1
     else if v_lin[i] = v_lin[i-1] then
-        IsMoveValid:=2
+        CanMove:=2
     else
-        IsMoveValid:=0;
+        CanMove:=0;
 end;
 
 function MoveAndSum(var game:type_game; var v_lin:type_vector; size:integer):boolean;
 (* Move and Sum the elements of the vector *)
 (* The direction of the move is to the left *) 
-(* Returns TRUE if the move was valid *)
-(* Returns FALSE if the move was not valid *)
+(* Returns TRUE if a number was moved *)
+(* Returns FALSE if a  move was not moved *)
 var
     i,e,ResultM:integer;
     v:type_vector;
@@ -172,7 +159,7 @@ begin
 		begin
 		    (* Move the number in v_lin[i] to the left as much as possible *)
 		    e:=i;
-		    ResultM:=IsMoveValid(v_lin,e);
+		    ResultM:=CanMove(v_lin,e);
 		    while (ResultM <> 0)and(e>1) do
 			begin
 			    case ResultM of
@@ -186,12 +173,13 @@ begin
 					    v_lin[e-1]:=v_lin[e-1]*2;
 					    game.score:=game.score+v_lin[e-1];
 					    v_lin[e]:=NOTHING;
+					    (* This number will not be sum again *)
 					    v[e-1]:=1;
 					end;
 				end;
 			    end;
 			    e:=e-1;
-			    ResultM:=IsMoveValid(v_lin,e);
+			    ResultM:=CanMove(v_lin,e);
 			end;
 		    if e <> i then
 			MoveAndSum:=TRUE;
@@ -230,6 +218,8 @@ begin
     for i:=1 to game.lin do
 	begin
 	    (* The side which will be move had to be at the beginning of the vector *)
+	    (* For example, I want to move this line to the right: 0 2 0 3 6 *)
+	    (* The procedure "MoveAndSum" has to receive this vector: 6 3 0 2 0 *)
 	    k:=1;
 	    for j:=game.col downto 1 do
 		begin
@@ -343,28 +333,31 @@ begin
 
     repeat 
 	ClrScr;
-	case CheckWinLose(game) of
-	    1:begin
-		print_line(SIZETOPBOT,'-');
-		writeln('          Game Over!');
-		print_line(SIZETOPBOT,'-');
-		end_game:=TRUE;
-	    end;
-	    2:begin
-		print_line(SIZETOPBOT,'-');
-		writeln('          You Win!');
-		print_line(SIZETOPBOT,'-');
-		end_game:=TRUE;
-	    end;
-	end;
-
 	if movement then
 	    Create_Number(game);
 	movement:=false;
 
 	writeln('SCORE: ',game.score);
 	print_map(game);
-	writeln(' Use the arrow keys to move. Press ESC to quit the game. ');
+	writeln(' Use the arrow keys to move ');
+	writeln(' Press ESC to quit the game ');
+
+	case CheckWinLose(game) of
+	    1:begin
+		print_line(SIZETOPBOT,'-');
+		writeln('|         Game Over!        |');
+		print_line(SIZETOPBOT,'-');
+		end_game:=TRUE;
+	    end;
+	    2:begin
+		print_line(SIZETOPBOT,'-');
+		writeln('|          You Win!         |');
+		print_line(SIZETOPBOT,'-');
+		end_game:=TRUE;
+	    end;
+	end;
+
+	
 
 	repeat 
 	until KeyPressed;
