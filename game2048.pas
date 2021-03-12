@@ -142,7 +142,7 @@ function MoveAndSum(var game:type_game; var v_lin:type_vector; size:integer):boo
 (* Move and Sum the elements of the vector *)
 (* The direction of the move is to the left *) 
 (* Returns TRUE if a number was moved *)
-(* Returns FALSE if a  move was not moved *)
+(* Returns FALSE if a number was not moved *)
 var
     i,e,ResultM:integer;
     v:type_vector;
